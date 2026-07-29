@@ -1,0 +1,8 @@
+{
+  "name": "wodaily",
+  "private": true,
+  "workspaces": [
+    "api",
+    "web"
+  ]
+}
