@@ -4,5 +4,9 @@
   "workspaces": [
     "api",
     "web"
-  ]
+  ],
+  "scripts": {
+    "build": "npm run build -w web && npm run build -w api",
+    "start": "npm run start:prod -w api"
+  }
 }
