@@ -5,11 +5,59 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum LearningEntryStatus {
+  PROBLEM
+  ATTEMPT
+  LEARNED
+}
+
+model Task {
+  id              String          @id @default(uuid())
+  title           String
+  description     String?
+  status          TaskStatus      @default(TODO)
+  position        Int
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  learningEntries LearningEntry[]
+}
+
+model CaptureNote {
+  id            String         @id @default(uuid())
+  title         String
+  content       String
+  tags          String[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  learningEntry LearningEntry?
+}
+
+model LearningEntry {
+  id                    String              @id @default(uuid())
+  taskId                String
+  task                  Task                @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  status                LearningEntryStatus @default(PROBLEM)
+  problemStatement      String
+  attemptLog            String?
+  researchNotes         String?
+  reflection            String?
+  promotedCaptureNoteId String?             @unique
+  promotedCaptureNote   CaptureNote?        @relation(fields: [promotedCaptureNoteId], references: [id], onDelete: SetNull)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
 }
