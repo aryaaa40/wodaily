@@ -178,4 +178,56 @@ describe('LearningService', () => {
       });
     });
   });
+
+  describe('generalizeToCapture', () => {
+    it('throws NotFoundException when the entry does not exist', async () => {
+      prisma.learningEntry.findUnique.mockResolvedValue(null);
+
+      await expect(service.generalizeToCapture('missing-id', 'Title')).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects generalizing an entry that is not LEARNED', async () => {
+      prisma.learningEntry.findUnique.mockResolvedValue({
+        id: 'entry-1',
+        status: 'ATTEMPT',
+        reflection: null,
+        promotedCaptureNoteId: null,
+      });
+
+      await expect(service.generalizeToCapture('entry-1', 'Title')).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects generalizing an entry that was already promoted', async () => {
+      prisma.learningEntry.findUnique.mockResolvedValue({
+        id: 'entry-1',
+        status: 'LEARNED',
+        reflection: 'now I understand X',
+        promotedCaptureNoteId: 'note-existing',
+      });
+
+      await expect(service.generalizeToCapture('entry-1', 'Title')).rejects.toThrow(BadRequestException);
+    });
+
+    it('creates a CaptureNote from the reflection and links it back', async () => {
+      prisma.learningEntry.findUnique.mockResolvedValue({
+        id: 'entry-1',
+        status: 'LEARNED',
+        reflection: 'now I understand X',
+        promotedCaptureNoteId: null,
+      });
+      prisma.captureNote.create.mockResolvedValue({ id: 'note-1', title: 'X pattern', content: 'now I understand X' });
+      prisma.learningEntry.update.mockResolvedValue({ id: 'entry-1', promotedCaptureNoteId: 'note-1' });
+
+      const result = await service.generalizeToCapture('entry-1', 'X pattern', ['react']);
+
+      expect(prisma.captureNote.create).toHaveBeenCalledWith({
+        data: { title: 'X pattern', content: 'now I understand X', tags: ['react'] },
+      });
+      expect(prisma.learningEntry.update).toHaveBeenCalledWith({
+        where: { id: 'entry-1' },
+        data: { promotedCaptureNoteId: 'note-1' },
+      });
+      expect(result.id).toBe('note-1');
+    });
+  });
 });

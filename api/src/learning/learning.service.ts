@@ -53,4 +53,26 @@ export class LearningService {
 
     return this.prisma.learningEntry.update({ where: { id }, data });
   }
+
+  async generalizeToCapture(id: string, title: string, tags: string[] = []) {
+    const entry = await this.prisma.learningEntry.findUnique({ where: { id } });
+    if (!entry) {
+      throw new NotFoundException(`Learning entry ${id} not found`);
+    }
+    if (entry.status !== LearningEntryStatus.LEARNED || !entry.reflection) {
+      throw new BadRequestException('Can only generalize a learned entry that has a reflection');
+    }
+    if (entry.promotedCaptureNoteId) {
+      throw new BadRequestException('This entry has already been generalized to a capture note');
+    }
+
+    const note = await this.prisma.captureNote.create({
+      data: { title, content: entry.reflection, tags },
+    });
+    await this.prisma.learningEntry.update({
+      where: { id },
+      data: { promotedCaptureNoteId: note.id },
+    });
+    return note;
+  }
 }

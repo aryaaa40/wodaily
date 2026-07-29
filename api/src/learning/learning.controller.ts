@@ -3,6 +3,7 @@ import { LearningService } from './learning.service';
 import { CreateLearningEntryDto } from './dto/create-learning-entry.dto';
 import { ListLearningEntriesDto } from './dto/list-learning-entries.dto';
 import { UpdateLearningEntryDto } from './dto/update-learning-entry.dto';
+import { GeneralizeLearningEntryDto } from './dto/generalize-learning-entry.dto';
 
 @Controller('learning-entries')
 export class LearningController {
@@ -21,5 +22,10 @@ export class LearningController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateLearningEntryDto) {
     return this.learningService.update(id, dto);
+  }
+
+  @Post(':id/generalize')
+  generalize(@Param('id') id: string, @Body() dto: GeneralizeLearningEntryDto) {
+    return this.learningService.generalizeToCapture(id, dto.title, dto.tags);
   }
 }
