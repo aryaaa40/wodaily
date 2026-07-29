@@ -1,10 +1,7 @@
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
 import { KanbanPage } from './pages/KanbanPage';
 import { CapturePage } from './pages/CapturePage';
-
-function Placeholder({ name }: { name: string }) {
-  return <div style={{ padding: '1rem' }}>{name} page coming in a later task.</div>;
-}
+import { LearningPage } from './pages/LearningPage';
 
 export function App() {
   return (
@@ -17,7 +14,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<KanbanPage />} />
         <Route path="/capture" element={<CapturePage />} />
-        <Route path="/learning" element={<Placeholder name="Learning Tracker" />} />
+        <Route path="/learning" element={<LearningPage />} />
       </Routes>
     </BrowserRouter>
   );
