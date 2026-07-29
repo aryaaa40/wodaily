@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { LearningService } from './learning.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -77,6 +77,105 @@ describe('LearningService', () => {
     expect(prisma.learningEntry.findMany).toHaveBeenCalledWith({
       where: {},
       orderBy: { createdAt: 'desc' },
+    });
+  });
+
+  describe('update', () => {
+    it('throws NotFoundException when the entry does not exist', async () => {
+      prisma.learningEntry.findUnique.mockResolvedValue(null);
+
+      await expect(service.update('missing-id', { attemptLog: 'tried X' })).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects setting researchNotes before an attemptLog exists', async () => {
+      prisma.learningEntry.findUnique.mockResolvedValue({
+        id: 'entry-1',
+        attemptLog: null,
+        reflection: null,
+        status: 'PROBLEM',
+      });
+
+      await expect(
+        service.update('entry-1', { researchNotes: 'found an article' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.learningEntry.update).not.toHaveBeenCalled();
+    });
+
+    it('allows setting researchNotes in the same call that sets attemptLog', async () => {
+      prisma.learningEntry.findUnique.mockResolvedValue({
+        id: 'entry-1',
+        attemptLog: null,
+        reflection: null,
+        status: 'PROBLEM',
+      });
+      prisma.learningEntry.update.mockResolvedValue({ id: 'entry-1' });
+
+      await service.update('entry-1', { attemptLog: 'tried X', researchNotes: 'found an article' });
+
+      expect(prisma.learningEntry.update).toHaveBeenCalledWith({
+        where: { id: 'entry-1' },
+        data: { attemptLog: 'tried X', researchNotes: 'found an article' },
+      });
+    });
+
+    it('rejects moving to ATTEMPT without an attemptLog', async () => {
+      prisma.learningEntry.findUnique.mockResolvedValue({
+        id: 'entry-1',
+        attemptLog: null,
+        reflection: null,
+        status: 'PROBLEM',
+      });
+
+      await expect(
+        service.update('entry-1', { status: 'ATTEMPT' as any }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('allows moving to ATTEMPT when attemptLog already exists', async () => {
+      prisma.learningEntry.findUnique.mockResolvedValue({
+        id: 'entry-1',
+        attemptLog: 'tried X',
+        reflection: null,
+        status: 'PROBLEM',
+      });
+      prisma.learningEntry.update.mockResolvedValue({ id: 'entry-1', status: 'ATTEMPT' });
+
+      await service.update('entry-1', { status: 'ATTEMPT' as any });
+
+      expect(prisma.learningEntry.update).toHaveBeenCalledWith({
+        where: { id: 'entry-1' },
+        data: { status: 'ATTEMPT' },
+      });
+    });
+
+    it('rejects moving to LEARNED without a reflection', async () => {
+      prisma.learningEntry.findUnique.mockResolvedValue({
+        id: 'entry-1',
+        attemptLog: 'tried X',
+        reflection: null,
+        status: 'ATTEMPT',
+      });
+
+      await expect(
+        service.update('entry-1', { status: 'LEARNED' as any }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('allows moving to LEARNED when reflection is provided in the same call', async () => {
+      prisma.learningEntry.findUnique.mockResolvedValue({
+        id: 'entry-1',
+        attemptLog: 'tried X',
+        reflection: null,
+        status: 'ATTEMPT',
+      });
+      prisma.learningEntry.update.mockResolvedValue({ id: 'entry-1', status: 'LEARNED' });
+
+      await service.update('entry-1', { reflection: 'now I understand X', status: 'LEARNED' as any });
+
+      expect(prisma.learningEntry.update).toHaveBeenCalledWith({
+        where: { id: 'entry-1' },
+        data: { reflection: 'now I understand X', status: 'LEARNED' },
+      });
     });
   });
 });

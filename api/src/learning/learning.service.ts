@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LearningEntryStatus } from '@prisma/client';
 
@@ -21,5 +21,36 @@ export class LearningService {
       where: taskId ? { taskId } : {},
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async update(
+    id: string,
+    data: {
+      problemStatement?: string;
+      attemptLog?: string;
+      researchNotes?: string;
+      reflection?: string;
+      status?: LearningEntryStatus;
+    },
+  ) {
+    const existing = await this.prisma.learningEntry.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException(`Learning entry ${id} not found`);
+    }
+
+    const resultingAttemptLog = data.attemptLog ?? existing.attemptLog;
+    const resultingReflection = data.reflection ?? existing.reflection;
+
+    if (data.researchNotes !== undefined && !resultingAttemptLog) {
+      throw new BadRequestException('Cannot add research notes before logging an attempt');
+    }
+    if (data.status === LearningEntryStatus.ATTEMPT && !resultingAttemptLog) {
+      throw new BadRequestException('Cannot move to ATTEMPT without an attempt log');
+    }
+    if (data.status === LearningEntryStatus.LEARNED && !resultingReflection) {
+      throw new BadRequestException('Cannot move to LEARNED without a reflection');
+    }
+
+    return this.prisma.learningEntry.update({ where: { id }, data });
   }
 }
