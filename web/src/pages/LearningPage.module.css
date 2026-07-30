@@ -168,3 +168,58 @@
   font-size: var(--text-md);
   color: var(--text-secondary);
 }
+
+.researchHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.placeholder {
+  color: var(--text-tertiary);
+}
+
+.locked {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  color: var(--text-tertiary);
+  font-size: var(--text-base);
+}
+
+/* Sengaja tidak memakai kelas global `.chip` supaya tidak bergantung
+   pada urutan injeksi CSS — seluruh gayanya ditulis lengkap di sini. */
+.promoted {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--status-done-bg);
+  color: var(--status-done-fg);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.modalContext {
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-md);
+}
+
+.modalField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.modalLabel {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
