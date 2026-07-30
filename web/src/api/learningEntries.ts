@@ -2,6 +2,11 @@ import { apiFetch } from './client';
 import type { CaptureNote, LearningEntry, LearningEntryStatus } from '../types';
 
 export const learningEntriesApi = {
+  create: (taskId: string, problemStatement: string) =>
+    apiFetch<LearningEntry>('/learning-entries', {
+      method: 'POST',
+      body: JSON.stringify({ taskId, problemStatement }),
+    }),
   listAll: () => apiFetch<LearningEntry[]>('/learning-entries'),
   update: (
     id: string,

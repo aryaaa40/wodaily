@@ -3,9 +3,11 @@ import { Clock, EllipsisVertical, Plus, Trash2 } from 'lucide-react';
 import type { LearningEntry, Task, TaskStatus } from '../types';
 import { tasksApi } from '../api/tasks';
 import { learningEntriesApi } from '../api/learningEntries';
-import { apiFetch } from '../api/client';
 import { PageHeader } from '../components/AppShell';
 import { StatusPill } from '../components/StatusPill';
+import { Modal } from '../components/Modal';
+import { TextPromptModal } from '../components/TextPromptModal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import {
   TASK_STATUS_ORDER,
   learningStatusMeta,
@@ -14,9 +16,69 @@ import {
 import { relativeTime } from '../lib/relativeTime';
 import styles from './KanbanPage.module.css';
 
+type Dialog =
+  | { kind: 'create' }
+  | { kind: 'blocked'; task: Task }
+  | { kind: 'delete'; task: Task }
+  | null;
+
+function CreateTaskModal({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (title: string, description?: string) => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const trimmedTitle = title.trim();
+
+  return (
+    <Modal
+      title="Task baru"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn btn--ghost" onClick={onClose}>
+            Batal
+          </button>
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={!trimmedTitle}
+            onClick={() => onCreate(trimmedTitle, description.trim() || undefined)}
+          >
+            Simpan
+          </button>
+        </>
+      }
+    >
+      <label className={styles.modalField}>
+        <span className={styles.modalLabel}>Judul</span>
+        <input
+          className="input"
+          value={title}
+          placeholder="Mau ngerjain apa?"
+          onChange={(event) => setTitle(event.target.value)}
+        />
+      </label>
+      <label className={styles.modalField}>
+        <span className={styles.modalLabel}>Deskripsi (opsional)</span>
+        <textarea
+          className="textarea"
+          value={description}
+          placeholder="Detail, konteks, atau catatan kecil"
+          onChange={(event) => setDescription(event.target.value)}
+        />
+      </label>
+    </Modal>
+  );
+}
+
 export function KanbanPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [entriesByTask, setEntriesByTask] = useState<Record<string, LearningEntry[]>>({});
+  const [dialog, setDialog] = useState<Dialog>(null);
 
   const load = useCallback(async () => {
     const [taskList, entries] = await Promise.all([
@@ -35,31 +97,28 @@ export function KanbanPage() {
     void load();
   }, [load]);
 
-  const handleCreate = async () => {
-    const title = window.prompt('Judul task baru');
-    if (!title?.trim()) return;
-    await tasksApi.create(title.trim());
+  const handleCreate = async (title: string, description?: string) => {
+    await tasksApi.create(title, description);
+    setDialog(null);
     await load();
   };
 
   const handleDelete = async (task: Task) => {
-    if (!window.confirm(`Hapus "${task.title}"?`)) return;
     await tasksApi.remove(task.id);
+    setDialog(null);
+    await load();
+  };
+
+  const handleBlockedReason = async (task: Task, problemStatement: string) => {
+    await learningEntriesApi.create(task.id, problemStatement);
+    setDialog(null);
     await load();
   };
 
   const moveTask = async (task: Task, status: TaskStatus) => {
     await tasksApi.updateStatus(task.id, status, 0);
-    if (status === 'BLOCKED') {
-      const problemStatement = window.prompt('Apa yang literally nge-block sekarang?');
-      if (problemStatement?.trim()) {
-        await apiFetch('/learning-entries', {
-          method: 'POST',
-          body: JSON.stringify({ taskId: task.id, problemStatement: problemStatement.trim() }),
-        });
-      }
-    }
     await load();
+    if (status === 'BLOCKED') setDialog({ kind: 'blocked', task });
   };
 
   return (
@@ -67,7 +126,11 @@ export function KanbanPage() {
       <PageHeader
         title="Kanban"
         action={
-          <button type="button" className="btn btn--primary" onClick={handleCreate}>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => setDialog({ kind: 'create' })}
+          >
             <Plus size={16} aria-hidden />
             Task baru
           </button>
@@ -107,7 +170,7 @@ export function KanbanPage() {
                             <button
                               type="button"
                               className="btn btn--icon"
-                              onClick={() => handleDelete(task)}
+                              onClick={() => setDialog({ kind: 'delete', task })}
                               aria-label={`Hapus ${task.title}`}
                             >
                               <Trash2 size={14} aria-hidden />
@@ -155,6 +218,31 @@ export function KanbanPage() {
             );
           })}
         </div>
+      )}
+
+      {dialog?.kind === 'create' && (
+        <CreateTaskModal onClose={() => setDialog(null)} onCreate={handleCreate} />
+      )}
+
+      {dialog?.kind === 'blocked' && (
+        <TextPromptModal
+          title="Kenapa mentok?"
+          label="Apa yang literally nge-block sekarang?"
+          placeholder="Tulis hambatan konkretnya, bukan topik umum"
+          submitLabel="Simpan"
+          onSubmit={(value) => handleBlockedReason(dialog.task, value)}
+          onClose={() => setDialog(null)}
+        />
+      )}
+
+      {dialog?.kind === 'delete' && (
+        <ConfirmModal
+          title="Hapus task"
+          message={`"${dialog.task.title}" bakal dihapus permanen, termasuk semua learning entry yang lahir dari task ini.`}
+          confirmLabel="Hapus"
+          onConfirm={() => handleDelete(dialog.task)}
+          onClose={() => setDialog(null)}
+        />
       )}
     </>
   );
