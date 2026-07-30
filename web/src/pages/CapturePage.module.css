@@ -1,21 +1,3 @@
-.composer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  margin-bottom: var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.composerActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-
 .filters {
   display: flex;
   flex-direction: column;
@@ -88,6 +70,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  cursor: pointer;
   transition:
     box-shadow 140ms ease,
     border-color 140ms ease;

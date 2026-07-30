@@ -189,7 +189,7 @@ export function LearningPage() {
                 <header className={styles.entryHeader}>
                   <StatusPill meta={meta} />
                   <span className={styles.origin}>
-                    dari · {taskTitles[entry.taskId] ?? 'task tak dikenal'}
+                    {taskTitles[entry.taskId] ?? 'task tak dikenal'}
                   </span>
                 </header>
 

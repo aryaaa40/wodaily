@@ -18,6 +18,7 @@ import styles from './KanbanPage.module.css';
 
 type Dialog =
   | { kind: 'create' }
+  | { kind: 'view'; task: Task }
   | { kind: 'blocked'; task: Task }
   | { kind: 'delete'; task: Task }
   | null;
@@ -71,6 +72,50 @@ function CreateTaskModal({
           onChange={(event) => setDescription(event.target.value)}
         />
       </label>
+    </Modal>
+  );
+}
+
+function TaskDetailModal({
+  task,
+  latestEntry,
+  onClose,
+  onDelete,
+}: {
+  task: Task;
+  latestEntry?: LearningEntry;
+  onClose: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <Modal
+      title={task.title}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn btn--ghost" onClick={onClose}>
+            Tutup
+          </button>
+          <button type="button" className="btn btn--danger" onClick={onDelete}>
+            Hapus
+          </button>
+        </>
+      }
+    >
+      <div className={styles.detailMeta}>
+        <StatusPill meta={taskStatusMeta(task.status)} />
+        {latestEntry && <StatusPill meta={learningStatusMeta(latestEntry.status)} />}
+        <span className={styles.meta}>
+          <Clock size={12} aria-hidden />
+          {relativeTime(task.updatedAt)}
+        </span>
+      </div>
+
+      <p className={styles.detailDesc}>
+        {task.description || (
+          <span className={styles.placeholder}>Belum ada deskripsi.</span>
+        )}
+      </p>
     </Modal>
   );
 }
@@ -132,7 +177,7 @@ export function KanbanPage() {
             onClick={() => setDialog({ kind: 'create' })}
           >
             <Plus size={16} aria-hidden />
-            Task baru
+            Task Baru
           </button>
         }
       />
@@ -163,10 +208,17 @@ export function KanbanPage() {
                   {columnTasks.map((task) => {
                     const latestEntry = entriesByTask[task.id]?.[0];
                     return (
-                      <article key={task.id} className={styles.card}>
+                      <article
+                        key={task.id}
+                        className={styles.card}
+                        onClick={() => setDialog({ kind: 'view', task })}
+                      >
                         <div className={styles.cardTop}>
                           <h3 className={styles.cardTitle}>{task.title}</h3>
-                          <div className={styles.cardActions}>
+                          <div
+                            className={styles.cardActions}
+                            onClick={(event) => event.stopPropagation()}
+                          >
                             <button
                               type="button"
                               className="btn btn--icon"
@@ -222,6 +274,15 @@ export function KanbanPage() {
 
       {dialog?.kind === 'create' && (
         <CreateTaskModal onClose={() => setDialog(null)} onCreate={handleCreate} />
+      )}
+
+      {dialog?.kind === 'view' && (
+        <TaskDetailModal
+          task={dialog.task}
+          latestEntry={entriesByTask[dialog.task.id]?.[0]}
+          onClose={() => setDialog(null)}
+          onDelete={() => setDialog({ kind: 'delete', task: dialog.task })}
+        />
       )}
 
       {dialog?.kind === 'blocked' && (

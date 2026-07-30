@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Search, Trash2 } from 'lucide-react';
 import type { CaptureNote } from '../types';
 import { captureNotesApi } from '../api/captureNotes';
 import { PageHeader } from '../components/AppShell';
@@ -8,22 +9,13 @@ import { relativeTime } from '../lib/relativeTime';
 import styles from './CapturePage.module.css';
 
 export function CapturePage() {
+  const navigate = useNavigate();
   const [notes, setNotes] = useState<CaptureNote[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [tagFilter, setTagFilter] = useState('');
   const [noteToDelete, setNoteToDelete] = useState<CaptureNote | null>(null);
-
-  const [expanded, setExpanded] = useState(false);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [tagsInput, setTagsInput] = useState('');
-
-  const isDirty = useMemo(
-    () => Boolean(title.trim() || content.trim() || tagsInput.trim()),
-    [title, content, tagsInput],
-  );
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 250);
@@ -48,24 +40,6 @@ export function CapturePage() {
     void load();
   }, [load]);
 
-  const resetComposer = () => {
-    setTitle('');
-    setContent('');
-    setTagsInput('');
-    setExpanded(false);
-  };
-
-  const handleSave = async () => {
-    if (!title.trim() || !content.trim()) return;
-    const tags = tagsInput
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-    await captureNotesApi.create(title.trim(), content.trim(), tags);
-    resetComposer();
-    await load();
-  };
-
   const handleDelete = async (note: CaptureNote) => {
     await captureNotesApi.remove(note.id);
     setNoteToDelete(null);
@@ -80,54 +54,15 @@ export function CapturePage() {
 
   return (
     <>
-      <PageHeader title="Capture" />
-
-      <div
-        className={styles.composer}
-        onFocus={() => setExpanded(true)}
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node) && !isDirty) {
-            setExpanded(false);
-          }
-        }}
-      >
-        <input
-          className="input"
-          value={title}
-          placeholder="Tulis apa yang lo baca…"
-          onChange={(event) => setTitle(event.target.value)}
-        />
-
-        {expanded && (
-          <>
-            <textarea
-              className="textarea"
-              value={content}
-              placeholder="Ringkasan, link, atau kutipan yang mau lo simpen"
-              onChange={(event) => setContent(event.target.value)}
-            />
-            <input
-              className="input"
-              value={tagsInput}
-              placeholder="Tag dipisah koma — misal: react, design-pattern"
-              onChange={(event) => setTagsInput(event.target.value)}
-            />
-            <div className={styles.composerActions}>
-              <button type="button" className="btn btn--ghost" onClick={resetComposer}>
-                Batal
-              </button>
-              <button
-                type="button"
-                className="btn btn--primary"
-                onClick={handleSave}
-                disabled={!title.trim() || !content.trim()}
-              >
-                Simpan
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+      <PageHeader
+        title="Capture"
+        action={
+          <button type="button" className="btn btn--primary" onClick={() => navigate('/capture/new')}>
+            <Plus size={16} aria-hidden />
+            Catatan baru
+          </button>
+        }
+      />
 
       <div className={styles.filters}>
         <div className={styles.searchWrap}>
@@ -174,13 +109,20 @@ export function CapturePage() {
       ) : (
         <div className={styles.grid}>
           {notes.map((note) => (
-            <article key={note.id} className={styles.note}>
+            <article
+              key={note.id}
+              className={styles.note}
+              onClick={() => navigate(`/capture/${note.id}`)}
+            >
               <div className={styles.noteTop}>
                 <h2 className={styles.noteTitle}>{note.title}</h2>
                 <button
                   type="button"
                   className={`btn btn--icon ${styles.noteDelete}`}
-                  onClick={() => setNoteToDelete(note)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setNoteToDelete(note);
+                  }}
                   aria-label={`Hapus ${note.title}`}
                 >
                   <Trash2 size={14} aria-hidden />
@@ -196,7 +138,10 @@ export function CapturePage() {
                       key={tag}
                       type="button"
                       className={`chip ${styles.tag}`}
-                      onClick={() => toggleTag(tag)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleTag(tag);
+                      }}
                     >
                       {tag}
                     </button>
